@@ -108,16 +108,18 @@ fn parse_equations(file_path: &str) -> Result<Vec<Equation>, ()> {
 
 fn main() {
     let equations = parse_equations("input.txt").unwrap();
-    let result_part1: u64 = equations
-        .iter()
-        .filter(|e| e.is_valid_part1())
-        .map(|e| e.lhs)
-        .sum();
+    let mut result_part1 = 0;
+    let mut result_part_2 = 0;
+    for eq in equations {
+        if eq.is_valid_part1() {
+            result_part1 += eq.lhs;
+            continue;
+        }
+        if eq.is_valid_part2() {
+            result_part_2 += eq.lhs;
+        }
+    }
+    let result_part2 = result_part1 + result_part_2;
     println!("Day 7, part 1: {result_part1}");
-    let result_part2: u64 = equations
-        .iter()
-        .filter(|e| e.is_valid_part2())
-        .map(|e| e.lhs)
-        .sum();
-    println!("Day 7, part 1: {result_part2}");
+    println!("Day 7, part 2: {result_part2}");
 }
