@@ -7,32 +7,14 @@ pub struct Pages {
 }
 
 impl Pages {
-    fn part1(&self) -> u32 {
-        let mut res = 0;
-        for update in &self.updates {
-            let mut visited = vec![];
-            for item in update {
-                let dependencies = self.rule_map.get(item).expect("in map");
-                if visited.iter().any(|v| dependencies.contains(v)) {
-                    break;
-                } else {
-                    visited.push(*item);
-                }
-            }
-            if visited.len() == update.len() && update.len() > 0 {
-                res += update[update.len() / 2];
-            }
-        }
-        res
-    }
-
-    fn part2(&self) -> u32 {
-        let mut res = 0;
+    fn valid_invalid(&self) -> (u32, u32) {
+        let mut valid_sum = 0;
+        let mut invalid_sum = 0;
         for update in &self.updates {
             let mut visited = vec![];
             let mut invalid = false;
             for item in update {
-                let dependencies = self.rule_map.get(item).expect("in map");
+                let dependencies = self.rule_map.get(item).expect("Page should be in map");
                 let mut tail_idx = visited.len();
                 visited.push(item);
                 if let Some((idx, _vf)) = visited
@@ -48,11 +30,13 @@ impl Pages {
                     invalid = true;
                 }
             }
-            if invalid && visited.len() > 0 {
-                res += visited[visited.len() / 2];
+            if invalid {
+                invalid_sum += visited[visited.len() / 2];
+            } else {
+                valid_sum += update[update.len() / 2];
             }
         }
-        res
+        (valid_sum, invalid_sum)
     }
 }
 
@@ -113,8 +97,7 @@ fn main() {
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))
         .unwrap();
     let pages = parse_pages(&raw).unwrap();
-    let result_part1 = pages.part1();
+    let (result_part1, result_part2) = pages.valid_invalid();
     println!("Day 5, part 1: {result_part1}");
-    let result_part2 = pages.part2();
     println!("Day 5, part 2: {result_part2}");
 }
