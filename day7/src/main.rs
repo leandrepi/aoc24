@@ -22,6 +22,9 @@ impl Equation {
                 } else {
                     res *= r;
                 }
+                if res > self.lhs {
+                    break;
+                }
             }
             if res == self.lhs {
                 return true;
@@ -46,6 +49,9 @@ impl Equation {
                         res = cat(res, *r);
                     }
                     _ => unreachable!(),
+                }
+                if res > self.lhs {
+                    break;
                 }
             }
             if res == self.lhs {
