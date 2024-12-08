@@ -91,7 +91,7 @@ fn find_player(contents: &CharArray, chars: &str) -> Result<Day6Player, ()> {
 fn walk_map(contents: &mut CharArray) -> Result<Option<u32>, ()> {
     let mut player = find_player(contents, "><^v")?;
     let mut result = 0;
-    let barrier = "#".bytes().collect::<Vec<u8>>()[0];
+    let barrier = "#".bytes().next().expect("ascii");
     let cursors = "><^v".bytes().collect::<Vec<u8>>();
     'outer: loop {
         let cur = (player.y as usize) * contents.width + player.x as usize;
@@ -145,7 +145,8 @@ fn walk_map(contents: &mut CharArray) -> Result<Option<u32>, ()> {
             _ => unreachable!(),
         }
         .bytes()
-        .collect::<Vec<u8>>()[0];
+        .next()
+        .expect("ascii");
         player.x = nx;
         player.y = ny;
         player.dir_y = dir_y;
@@ -156,8 +157,8 @@ fn walk_map(contents: &mut CharArray) -> Result<Option<u32>, ()> {
 }
 
 fn reset_map(map: &mut CharArray, start_pos: &Day6Player) {
-    let barrier = "#".bytes().collect::<Vec<u8>>()[0];
-    let dot = ".".bytes().collect::<Vec<u8>>()[0];
+    let barrier = "#".bytes().next().expect("ascii");
+    let dot = ".".bytes().next().expect("ascii");
     for y in 0..map.height {
         for x in 0..map.width {
             let cursor = y * map.width + x;
