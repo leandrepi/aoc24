@@ -68,7 +68,7 @@ impl fmt::Display for CharArray {
 }
 
 fn gather_antennas(map: &CharArray) -> HashMap<u8, Vec<usize>> {
-    let dot = 46u8; // ".".bytes().collect::<Vec<u8>>()[0]
+    let dot = ".".bytes().next().expect("ascii char");
     let mut antennas = HashMap::new();
     for (idx, c) in map.contents.iter().enumerate().filter(|(_, &c)| c != dot) {
         antennas
@@ -88,35 +88,27 @@ fn antinodes_from_pair(map: &CharArray, fst: usize, snd: usize, shallow: bool) -
     let snd_x = snd % width;
     let dx = fst_x as i32 - snd_x as i32;
     let dy = fst_y as i32 - snd_y as i32;
-    let mut a1_x = fst_x as i32 + dx;
-    let mut a1_y = fst_y as i32 + dy;
-    let mut a2_x = snd_x as i32 - dx;
-    let mut a2_y = snd_y as i32 - dy;
+    let mut ax = fst_x as i32 + dx;
+    let mut ay = fst_y as i32 + dy;
+    let mut steps = 1;
 
-    // my kingdom for a do while
-    loop {
-        if map.is_valid(a1_x, a1_y) {
-            res.push((a1_y as usize) * width + a1_x as usize);
-        } else {
-            break;
+    for step_dir in [1, -1] {
+        // my kingdom for a do while
+        loop {
+            if map.is_valid(ax, ay) {
+                res.push((ay as usize) * width + ax as usize);
+            } else {
+                break;
+            }
+            if shallow {
+                break;
+            }
+            ax += step_dir * dx;
+            ay += step_dir * dy;
+            steps += 1;
         }
-        if shallow {
-            break;
-        }
-        a1_x += dx;
-        a1_y += dy;
-    }
-    loop {
-        if map.is_valid(a2_x, a2_y) {
-            res.push((a2_y as usize) * width + a2_x as usize);
-        } else {
-            break;
-        }
-        if shallow {
-            break;
-        }
-        a2_x -= dx;
-        a2_y -= dy;
+        ax -= (steps + 2) * dx;
+        ay -= (steps + 2) * dy;
     }
     res
 }
