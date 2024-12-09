@@ -159,12 +159,9 @@ fn walk_map(contents: &mut CharArray) -> Result<Option<u32>, ()> {
 fn reset_map(map: &mut CharArray, start_pos: &Day6Player) {
     let barrier = "#".bytes().next().expect("ascii");
     let dot = ".".bytes().next().expect("ascii");
-    for y in 0..map.height {
-        for x in 0..map.width {
-            let cursor = y * map.width + x;
-            if map[cursor] != barrier {
-                map[cursor] = dot;
-            }
+    for cursor in 0..map.contents.len() {
+        if map[cursor] != barrier {
+            map[cursor] = dot;
         }
     }
     let cursor = (start_pos.y as usize) * map.width + (start_pos.x as usize);
@@ -176,28 +173,31 @@ fn main() {
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))
         .unwrap();
     let mut map = CharArray::from(&raw);
-    let start_pos = find_player(&map, "><v^").unwrap();
+    let pos_chars = "><^v";
+    let pos_bytes = pos_chars.bytes().collect::<Vec<u8>>();
+    let start_pos = find_player(&map, &pos_chars).unwrap();
 
     let result_part1 = walk_map(&mut map).unwrap().unwrap_or_default();
-    reset_map(&mut map, &start_pos);
     println!("Day 6, part 1: {result_part1}");
 
+    let start_cur = start_pos.y as usize * map.width + start_pos.x as usize;
+    let candidates = map
+        .contents
+        .iter()
+        .enumerate()
+        .filter(|(i, c)| *i != start_cur && pos_bytes.contains(c))
+        .map(|(i, _)| i)
+        .collect::<Vec<usize>>();
     let mut result_part2 = 0;
-    let barrier = "#".bytes().collect::<Vec<u8>>()[0];
-    for barrier_y in 0..map.height {
-        for barrier_x in 0..map.width {
-            let cur = barrier_y * map.width + barrier_x;
-            if map[cur] == barrier || map[cur] == start_pos.cursor {
-                continue;
-            }
-            let prev = map[cur];
-            map[cur] = barrier;
-            if let Ok(None) = walk_map(&mut map) {
-                result_part2 += 1;
-            }
-            map[cur] = prev;
-            reset_map(&mut map, &start_pos);
+    let barrier = "#".bytes().next().expect("ascii");
+    for cur in candidates {
+        reset_map(&mut map, &start_pos);
+        let prev = map[cur];
+        map[cur] = barrier;
+        if let Ok(None) = walk_map(&mut map) {
+            result_part2 += 1;
         }
+        map[cur] = prev;
     }
     println!("Day 6, part 2: {result_part2}");
 }
