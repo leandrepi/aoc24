@@ -54,6 +54,7 @@ fn compact_part1(blocks: &mut [i64]) {
 
 fn compact_part2(blocks: &mut [i64]) {
     let mut cursor = blocks.len() - 1;
+    let mut last_contiguous = 0;
     loop {
         if blocks[cursor] < 0 {
             cursor -= 1;
@@ -69,10 +70,18 @@ fn compact_part2(blocks: &mut [i64]) {
             cursor -= 1;
         }
         cursor += 1;
-        let mut fst_empty = 0;
+        let mut fst_empty = last_contiguous;
+        let mut non_contig = false;
         loop {
             while fst_empty < cursor && blocks[fst_empty] >= 0 {
                 fst_empty += 1;
+            }
+            if !non_contig {
+                last_contiguous = fst_empty;
+                non_contig = true;
+                if last_contiguous >= cursor {
+                    return;
+                }
             }
             if fst_empty >= cursor {
                 break;
