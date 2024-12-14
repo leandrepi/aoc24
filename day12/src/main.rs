@@ -1,4 +1,4 @@
-use std::{fmt, fs};
+use std::fs;
 
 #[derive(Debug)]
 pub struct CharArray {
@@ -15,15 +15,6 @@ where
 
     fn index(&self, index: Idx) -> &Self::Output {
         &self.contents[index]
-    }
-}
-
-impl<Idx> std::ops::IndexMut<Idx> for CharArray
-where
-    Idx: std::slice::SliceIndex<[u8]>,
-{
-    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
-        &mut self.contents[index]
     }
 }
 
@@ -49,18 +40,6 @@ impl CharArray {
 
     fn is_valid(&self, x: i32, y: i32) -> bool {
         x >= 0 && (x as usize) < self.width && y >= 0 && (y as usize) < self.height
-    }
-}
-
-impl fmt::Display for CharArray {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (idx, &c) in self.contents.iter().enumerate() {
-            if idx > 0 && idx % self.width == 0 {
-                writeln!(f)?;
-            }
-            write!(f, "{}", c as char)?;
-        }
-        Ok(())
     }
 }
 
@@ -156,6 +135,6 @@ fn main() {
         .unwrap();
     let map = CharArray::from(&raw);
     let (fst, snd) = map_price(&map);
-    println!("Day 10, part 1: {fst}");
-    println!("Day 10, part 2: {snd}");
+    println!("Day 12, part 1: {fst}");
+    println!("Day 12, part 2: {snd}");
 }
