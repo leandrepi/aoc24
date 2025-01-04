@@ -5,13 +5,12 @@ fn parse_input() -> Result<Vec<u64>, ()> {
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     let line = raw
         .lines()
-        .filter(|&l| l.trim().len() > 0)
-        .next()
+        .find(|&l| !l.trim().is_empty())
         .expect("ERROR: Need at least a line to parse.");
     let stones = line
         .split(" ")
         .map(|s| s.trim())
-        .filter(|&c| c.len() > 0)
+        .filter(|&c| !c.is_empty())
         .map(|s| s.parse())
         .collect::<Result<Vec<u64>, _>>()
         .map_err(|e| eprintln!("Failed to parse line as a list of integers: {e}.",))?;
@@ -61,7 +60,7 @@ fn total_counts(counts: &HashMap<u64, u64>) -> u64 {
 }
 
 fn count_stones(stones: &[u64], blinks_part1: u32, blinks_part2: u32) -> (u64, u64) {
-    let mut blink_counts = stones_to_counts(&stones);
+    let mut blink_counts = stones_to_counts(stones);
     blink_counts = iter_rule(blink_counts, blinks_part1);
     let fst = total_counts(&blink_counts);
     blink_counts = iter_rule(blink_counts, blinks_part2 - blinks_part1);

@@ -1,7 +1,7 @@
-use std::{fmt, fs};
+use std::fs;
 
-const PIN_CHAR: u8 = '#' as u8;
-const DOT_CHAR: u8 = '.' as u8;
+const PIN_CHAR: u8 = b'#';
+const DOT_CHAR: u8 = b'.';
 const MAX_HEIGHT: usize = 5;
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Result<Self, ()> {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");

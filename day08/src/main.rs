@@ -32,7 +32,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Self {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
@@ -120,7 +120,7 @@ fn count_antinodes(map: &CharArray, shallow: bool) -> usize {
         for (idx, &fst) in positions[..(positions.len() - 1)].iter().enumerate() {
             for &snd in positions[(idx + 1)..].iter() {
                 let mut pair_anti = antinodes_from_pair(map, fst, snd, shallow);
-                if !shallow && pair_anti.len() > 0 {
+                if !shallow && !pair_anti.is_empty() {
                     pair_anti.push(fst);
                     pair_anti.push(snd);
                 }

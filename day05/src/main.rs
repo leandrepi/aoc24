@@ -20,8 +20,7 @@ impl Pages {
                 if let Some((idx, _vf)) = visited
                     .iter()
                     .enumerate()
-                    .filter(|&(_, v)| dependencies.contains(v))
-                    .next()
+                    .find(|&(_, v)| dependencies.contains(v))
                 {
                     while tail_idx > idx {
                         visited.swap(tail_idx, tail_idx - 1);
@@ -43,14 +42,14 @@ impl Pages {
 fn parse_pages(content: &str) -> Result<Pages, ()> {
     let mut lines = content.lines().map(|l| l.trim()).enumerate();
     let mut rule_map = HashMap::new();
-    while let Some((idx, rule_line)) = lines.next() {
-        if rule_line.len() == 0 {
+    for (idx, rule_line) in lines.by_ref() {
+        if rule_line.is_empty() {
             break;
         }
         let splits: Vec<u32> = rule_line
             .split("|")
             .map(|s| s.trim())
-            .filter(|&l| l.len() > 0)
+            .filter(|&l| !l.is_empty())
             .map(|s| s.parse())
             .collect::<Result<Vec<u32>, _>>()
             .map_err(|e| {
@@ -74,11 +73,11 @@ fn parse_pages(content: &str) -> Result<Pages, ()> {
         rule_map.entry(snd).or_insert(vec![]);
     }
     let mut updates = vec![];
-    for (idx, update_line) in lines.filter(|(_, l)| l.len() > 0) {
+    for (idx, update_line) in lines.filter(|(_, l)| !l.is_empty()) {
         let update: Vec<u32> = update_line
             .split(",")
             .map(|s| s.trim())
-            .filter(|&l| l.len() > 0)
+            .filter(|&l| !l.is_empty())
             .map(|s| s.parse())
             .collect::<Result<Vec<u32>, _>>()
             .map_err(|e| {

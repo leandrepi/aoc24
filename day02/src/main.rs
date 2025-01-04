@@ -7,7 +7,7 @@ fn parse_input(file_path: &str) -> Result<Vec<Vec<u32>>, ()> {
         let splits: Vec<u32> = line
             .split(" ")
             .map(|s| s.trim())
-            .filter(|&l| l.len() > 0)
+            .filter(|&l| !l.is_empty())
             .map(|s| s.parse())
             .collect::<Result<Vec<u32>, _>>()
             .map_err(|e| {
@@ -35,8 +35,7 @@ fn is_safe_part2(xs: &[u32]) -> bool {
     if is_safe_part1(xs) {
         return true;
     }
-    let mut ys: Vec<u32> = vec![];
-    ys.reserve(xs.len());
+    let mut ys: Vec<u32> = Vec::with_capacity(xs.len());
     for (x_idx, _x) in xs.iter().enumerate() {
         for (y_idx, &y) in xs.iter().enumerate() {
             if y_idx != x_idx {
@@ -48,7 +47,7 @@ fn is_safe_part2(xs: &[u32]) -> bool {
         }
         ys.clear();
     }
-    return false;
+    false
 }
 
 fn main() {

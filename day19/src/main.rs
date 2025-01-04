@@ -37,7 +37,7 @@ impl Towels {
 fn parse_input() -> Result<Towels, ()> {
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
-    let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+    let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
 
     let mut pattern_trie = Vec::with_capacity(1000);
     pattern_trie.push(Node::new()); // root node
@@ -46,7 +46,7 @@ fn parse_input() -> Result<Towels, ()> {
         .expect("Pattern line")
         .split(",")
         .map(|l| l.trim())
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
     {
         let mut i = 0;
         for j in pattern.bytes().map(char_to_index) {
@@ -78,6 +78,12 @@ fn char_to_index(c: u8) -> usize {
         'r' => 3,
         'g' => 4,
         _ => unreachable!(),
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

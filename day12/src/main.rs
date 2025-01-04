@@ -20,7 +20,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Self {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");

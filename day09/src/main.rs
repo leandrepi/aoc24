@@ -5,7 +5,7 @@ fn parse_input(filepath: &str) -> Result<Vec<u8>, ()> {
         fs::read_to_string(filepath).map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     Ok(data
         .chars()
-        .filter(|c| c.is_digit(10))
+        .filter(|c| c.is_ascii_digit())
         .map(|c| c.to_digit(10).expect("digit") as u8)
         .collect())
 }

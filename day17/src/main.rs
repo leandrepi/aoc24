@@ -4,16 +4,20 @@ fn parse_input() -> Result<(Vec<u64>, Vec<u8>), ()> {
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     let mut registers = vec![];
-    let mut lines = raw.trim().lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+    let mut lines = raw
+        .trim()
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty());
 
     for reg in ["A", "B", "C"] {
         let register: u64 = lines
             .next()
-            .expect(format!("should have reg {} line", reg).as_str())
+            .unwrap_or_else(|| panic!("should have reg {} line", reg))
             .split(format!("{}:", reg).as_str())
             .map(|l| l.trim())
             .nth(1)
-            .expect(format!("should have value for {}", reg).as_str())
+            .unwrap_or_else(|| panic!("should have value for {}", reg))
             .parse()
             .map_err(|e| eprintln!("Failed to parse {reg} as int: {e}"))?;
         registers.push(register);
@@ -109,10 +113,10 @@ impl Instruction {
                 let denom = 1
                     << (match operand {
                         ComboOperand::Lit(x) => x as u64,
-                        ComboOperand::Reg(r) => r.value(&registers) as u64,
+                        ComboOperand::Reg(r) => r.value(registers),
                         x => panic!("Invalid operand {x:?} for a xdv instruction."),
                     });
-                let num = Register::A.value(&registers);
+                let num = Register::A.value(registers);
                 let store_register = match self {
                     Self::ADV => Register::A,
                     Self::BDV => Register::B,
@@ -127,22 +131,22 @@ impl Instruction {
                 let operand = ComboOperand::from(operand);
                 registers[Register::B.index()] = match operand {
                     ComboOperand::Lit(x) => x as u64,
-                    ComboOperand::Reg(r) => r.value(&registers),
+                    ComboOperand::Reg(r) => r.value(registers),
                     x => panic!("Invalid operand {x:?} for bst instruction."),
                 } % 8;
             }
             Self::JNZ => {
-                if Register::A.value(&registers) != 0 {
+                if Register::A.value(registers) != 0 {
                     *ip = operand as usize;
                     return;
                 }
             }
-            Self::BXC => registers[Register::B.index()] ^= Register::C.value(&registers),
+            Self::BXC => registers[Register::B.index()] ^= Register::C.value(registers),
             Self::OUT => {
                 let operand = ComboOperand::from(operand);
                 let value = match operand {
                     ComboOperand::Lit(x) => x as u64,
-                    ComboOperand::Reg(r) => r.value(&registers),
+                    ComboOperand::Reg(r) => r.value(registers),
                     x => panic!("Invalid operand {x:?} for out instruction."),
                 } % 8;
                 to_print.push(value as u8);
@@ -168,7 +172,7 @@ fn run_program(registers: &mut [u64], program: &[u8], print: bool) -> Vec<u8> {
 }
 
 fn print_output(to_print: &[u8]) {
-    if to_print.len() == 0 {
+    if to_print.is_empty() {
         println!();
         return;
     }
@@ -212,10 +216,8 @@ fn backtrack_a(program: &[u8], b_idx: usize, a_min: u64) -> Option<u64> {
             if b_idx == 0 {
                 // reached and matched the firsst opcode: quine!
                 return Some(a);
-            } else {
-                if let Some(r) = backtrack_a(program, b_idx - 1, a * 8) {
-                    return Some(r);
-                }
+            } else if let Some(r) = backtrack_a(program, b_idx - 1, a * 8) {
+                return Some(r);
             }
         }
     }

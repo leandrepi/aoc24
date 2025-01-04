@@ -37,7 +37,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Result<Self, ()> {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
@@ -177,7 +177,7 @@ fn to_move_vertically(
             indices.push(nplayer);
             *player = nplayer;
             to_move_vertically(map, player, dir_y, indices);
-            if indices.len() == 0 {
+            if indices.is_empty() {
                 return; // hit a barrier, short circuit
             }
             if x == LBOX_CHAR {
@@ -204,7 +204,7 @@ fn vertical_move(map: &mut CharArray, player: &mut usize, dir_y: i32) {
     *player = original_player;
 
     // cannot push anything
-    if indices.len() == 0 {
+    if indices.is_empty() {
         return;
     }
 

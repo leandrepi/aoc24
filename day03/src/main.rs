@@ -29,7 +29,7 @@ impl<'a> Iterator for Lexer<'a> {
         keyword_map.insert("mul", Keyword::Mult);
         keyword_map.insert("do", Keyword::Do);
         keyword_map.insert("don't", Keyword::Dont);
-        while self.cursor < self.mul_str.len() {
+        if self.cursor < self.mul_str.len() {
             for kw in ["don't", "do", "mul"] {
                 let cursor_end = self.cursor + kw.len();
                 if cursor_end <= self.mul_str.len() && self.mul_str[self.cursor..cursor_end] == *kw
@@ -53,10 +53,10 @@ impl<'a> Iterator for Lexer<'a> {
             self.cursor += 1;
             match cur {
                 p @ (',' | '(' | ')') => return Some(Token::Punct(p)),
-                c if c.is_digit(10) => {
+                c if c.is_ascii_digit() => {
                     let mut acc = cur.to_digit(10).expect("Should be a digit");
-                    while let Some(c) = chars.next() {
-                        if c.is_digit(10) {
+                    for c in chars {
+                        if c.is_ascii_digit() {
                             acc = acc * 10 + c.to_digit(10).expect("Should be a digit");
                             self.cursor += 1;
                         } else {
@@ -87,9 +87,7 @@ impl Lexer<'_> {
 
 fn parse_mul(lexer: &mut Lexer) -> Option<u32> {
     let mut acc;
-    if let None = lexer.expect_token(Token::Punct('(')) {
-        return None;
-    }
+    lexer.expect_token(Token::Punct('('))?;
     match lexer.expect_token(Token::Value(0)) {
         Some(Token::Value(a)) => {
             acc = a;
@@ -97,9 +95,7 @@ fn parse_mul(lexer: &mut Lexer) -> Option<u32> {
         _ => return None,
     }
 
-    if let None = lexer.expect_token(Token::Punct(',')) {
-        return None;
-    }
+    lexer.expect_token(Token::Punct(','))?;
 
     match lexer.expect_token(Token::Value(0)) {
         Some(Token::Value(a)) => {
@@ -110,10 +106,8 @@ fn parse_mul(lexer: &mut Lexer) -> Option<u32> {
         }
     }
 
-    if let None = lexer.expect_token(Token::Punct(')')) {
-        return None;
-    }
-    return Some(acc);
+    lexer.expect_token(Token::Punct(')'))?;
+    Some(acc)
 }
 
 fn part1(mul_str: &str) -> u32 {

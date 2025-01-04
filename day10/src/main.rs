@@ -20,13 +20,13 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Self {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
         let mut contents = first
             .chars()
-            .filter(|c| c.is_digit(10))
+            .filter(|c| c.is_ascii_digit())
             .map(|c| c.to_digit(10).expect("ascii") as u8)
             .collect::<Vec<u8>>();
         let width = first.len();
@@ -34,7 +34,7 @@ impl CharArray {
         for line in lines {
             contents.extend(
                 line.chars()
-                    .filter(|c| c.is_digit(10))
+                    .filter(|c| c.is_ascii_digit())
                     .map(|c| c.to_digit(10).expect("ascii") as u8),
             );
             height += 1;

@@ -21,7 +21,7 @@ where
     I: IntoIterator<Item = &'a T>,
     T: PartialEq,
 {
-    fst.into_iter().zip(snd).all(|(&ref p, &ref c)| p == c)
+    fst.into_iter().zip(snd).all(|(p, c)| p == c)
 }
 
 impl<T> Kernel<T>
@@ -106,7 +106,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Self {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");

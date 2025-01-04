@@ -3,7 +3,7 @@ use std::{
     fs,
 };
 const COMP_LEN: usize = 2;
-const MAIN_KEY: u8 = 't' as u8;
+const MAIN_KEY: u8 = b't';
 type Vertex = (u8, u8);
 type Edge = (Vertex, Vertex);
 type SubGraph = Vec<Vertex>;
@@ -14,7 +14,7 @@ fn parse_input() -> Result<Vec<Edge>, ()> {
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
 
     let mut rules = vec![];
-    for line in raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0) {
+    for line in raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty()) {
         let splits: Vec<String> = line.split('-').map(|s| s.trim().to_owned()).collect();
         if splits.len() != 2 {
             eprintln!("ERROR: invalid rule, should match wx-yz");
@@ -54,7 +54,7 @@ fn find_three_cycles(graph: &Graph) -> usize {
         for d in deps {
             let cand = graph.get(d).unwrap();
             for v in cand {
-                if v != c && graph.get(v).unwrap().contains(&c) {
+                if v != c && graph.get(v).unwrap().contains(c) {
                     cur.push(d);
                     cur.push(v);
                     cur.sort();
@@ -83,13 +83,13 @@ fn bron_kerbosch(
     x: &mut HashSet<Vertex>,
     cliques: &mut Vec<SubGraph>,
 ) {
-    if p.len() == 0 && x.len() == 0 {
+    if p.is_empty() && x.is_empty() {
         cliques.push(r.iter().copied().collect::<SubGraph>());
         return;
     }
 
     // pick pivot as the vertex from P U X of maximal degree
-    let pivot_candidates = p.union(&x);
+    let pivot_candidates = p.union(x);
     let pivot = pivot_candidates
         .max_by(|v1, v2| {
             graph
@@ -114,7 +114,7 @@ fn bron_kerbosch(
 
     for v in &p_without_pivot_neighbors {
         let v_neigh = graph
-            .get(&v)
+            .get(v)
             .unwrap()
             .iter()
             .copied()

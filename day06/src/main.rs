@@ -9,7 +9,7 @@ pub struct CharArray {
 
 impl CharArray {
     fn from(raw: &str) -> Self {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
@@ -66,7 +66,7 @@ fn find_player(contents: &CharArray, chars: &str) -> Result<Day6Player, ()> {
         for x in 0..contents.width {
             // if chars.itercontains(contents[y * contents.width + x]):
             let current = &contents[y * contents.width + x];
-            if let Some(c) = to_match.iter().filter(|&c| c == current).next() {
+            if let Some(c) = to_match.iter().find(|&c| c == current) {
                 let (dir_y, dir_x) = match char_map.get(c) {
                     Some('>') => (0, 1),
                     Some('v') => (1, 0),
@@ -100,11 +100,9 @@ fn walk_map(contents: &mut CharArray) -> Result<Option<u32>, ()> {
                 return Ok(None);
             }
             result += 1;
-        } else {
-            if !cursors.contains(&contents[cur]) {
-                contents[cur] = player.cursor;
-                result += 1;
-            }
+        } else if !cursors.contains(&contents[cur]) {
+            contents[cur] = player.cursor;
+            result += 1;
         }
         let mut dir_x = player.dir_x;
         let mut dir_y = player.dir_y;
@@ -175,7 +173,7 @@ fn main() {
     let mut map = CharArray::from(&raw);
     let pos_chars = "><^v";
     let pos_bytes = pos_chars.bytes().collect::<Vec<u8>>();
-    let start_pos = find_player(&map, &pos_chars).unwrap();
+    let start_pos = find_player(&map, pos_chars).unwrap();
 
     let result_part1 = walk_map(&mut map).unwrap().unwrap_or_default();
     println!("Day 6, part 1: {result_part1}");

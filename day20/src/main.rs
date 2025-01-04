@@ -36,7 +36,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Result<Self, ()> {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
@@ -85,8 +85,8 @@ fn find_start(map: &CharArray) -> (usize, usize) {
     let mut start = None;
     let mut end = None;
     for (c, &x) in map.contents.iter().enumerate() {
-        if start != None && end != None {
-            return (start.unwrap(), end.unwrap());
+        if let (Some(s), Some(e)) = (start, end) {
+            return (s, e);
         }
         if x == START_CHAR {
             start = Some(c);
@@ -133,8 +133,7 @@ fn cheat_values(map: &CharArray, path: &[usize], allowed_steps: usize) -> usize 
         scores[p] = i;
     }
 
-    for p_idx in 0..(path.len() - MIN_CHEAT_GAIN) {
-        let c = path[p_idx];
+    for (p_idx, c) in path.iter().enumerate().take(path.len() - MIN_CHEAT_GAIN) {
         let y = c / map.width;
         let x = c % map.width;
 
@@ -150,7 +149,7 @@ fn cheat_values(map: &CharArray, path: &[usize], allowed_steps: usize) -> usize 
         };
 
         for ny in min_y..max_y {
-            let ysteps = (ny as i32 - y as i32).abs() as usize;
+            let ysteps = (ny as i32 - y as i32).unsigned_abs() as usize;
             let xsteps = allowed_steps - ysteps;
             let min_x = if x <= xsteps { 0 } else { x - xsteps };
             let max_x = if x + xsteps >= map.width {
@@ -160,7 +159,7 @@ fn cheat_values(map: &CharArray, path: &[usize], allowed_steps: usize) -> usize 
             };
             let mut nc = ny * map.width + min_x;
             for nx in min_x..max_x {
-                let steps = ysteps + (nx as i32 - x as i32).abs() as usize;
+                let steps = ysteps + (nx as i32 - x as i32).unsigned_abs() as usize;
                 if scores[nc] >= MIN_CHEAT_GAIN + p_idx + steps {
                     res += 1;
                 }

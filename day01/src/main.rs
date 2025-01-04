@@ -8,7 +8,7 @@ fn parse_input(file_path: &str) -> Result<(Vec<u32>, Vec<u32>), ()> {
         let splits: Vec<u32> = line
             .split(" ")
             .map(|s| s.trim())
-            .filter(|&l| l.len() > 0)
+            .filter(|&l| !l.is_empty())
             .map(|s| s.parse())
             .collect::<Result<Vec<u32>, _>>()
             .map_err(|e| {
@@ -36,7 +36,7 @@ fn part1(xs: &mut [u32], ys: &mut [u32]) -> u32 {
     ys.sort();
     xs.iter()
         .zip(ys.iter())
-        .map(|(&a, &b)| (a as i32 - b as i32).abs() as u32)
+        .map(|(&a, &b)| (a as i32 - b as i32).unsigned_abs())
         .sum()
 }
 

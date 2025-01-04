@@ -17,7 +17,7 @@ impl Robot {
         let splits = line
             .split(" ")
             .map(|s| s.trim().to_owned())
-            .filter(|s| s.len() > 0)
+            .filter(|s| !s.is_empty())
             .collect::<Vec<String>>();
         if splits.len() != 2 {
             eprintln!("Failed to parse robot as <position>, <velocity>.");
@@ -72,7 +72,7 @@ fn parse_xy(split: &str) -> Result<(i32, i32), ()> {
         .map(|l| {
             l.trim()
                 .chars()
-                .filter(|c| c.is_digit(10) || *c == '-')
+                .filter(|c| c.is_ascii_digit() || *c == '-')
                 .collect::<String>()
         })
         .map(|s| s.parse())
@@ -90,8 +90,8 @@ fn parse_input() -> Result<Vec<Robot>, ()> {
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     raw.lines()
         .map(|l| l.trim())
-        .filter(|l| l.len() > 0)
-        .map(|l| Robot::from(l))
+        .filter(|l| !l.is_empty())
+        .map(Robot::from)
         .collect()
 }
 
@@ -145,7 +145,7 @@ fn main() {
         if build_board(&robots).iter().all(|r| *r <= 1) {
             snd = Some(step);
         }
-        if fst != None && snd != None {
+        if fst.is_some() && snd.is_some() {
             break;
         }
         sim_robots(&mut robots);

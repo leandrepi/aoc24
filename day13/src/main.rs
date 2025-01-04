@@ -17,7 +17,7 @@ fn parse_xy(split: &str) -> Result<(u64, u64), ()> {
         .map(|l| {
             l.trim()
                 .chars()
-                .filter(|c| c.is_digit(10))
+                .filter(|c| c.is_ascii_digit())
                 .collect::<String>()
         })
         .map(|s| s.parse())
@@ -34,7 +34,7 @@ fn parse_input() -> Result<Vec<Machine>, ()> {
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     let mut machines = vec![];
-    let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+    let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
     while let Some(line) = lines.next() {
         let button_a = line
             .split("A:")
@@ -65,9 +65,9 @@ fn parse_input() -> Result<Vec<Machine>, ()> {
 
 fn update_machines_part2(machines: &mut [Machine]) {
     for machine in machines.iter_mut() {
-        (*machine).prize = (
-            (*machine).prize.0 + PART2_PRIZE_OFFSET,
-            (*machine).prize.1 + PART2_PRIZE_OFFSET,
+        machine.prize = (
+            machine.prize.0 + PART2_PRIZE_OFFSET,
+            machine.prize.1 + PART2_PRIZE_OFFSET,
         );
     }
 }
@@ -133,9 +133,9 @@ fn minimal_token_cost(machine: &Machine) -> Option<u64> {
 
 fn main() {
     let mut machines = parse_input().unwrap();
-    let fst: u64 = machines.iter().filter_map(|m| minimal_token_cost(m)).sum();
+    let fst: u64 = machines.iter().filter_map(minimal_token_cost).sum();
     println!("Day 13, part 1: {fst}");
     update_machines_part2(&mut machines);
-    let snd: u64 = machines.iter().filter_map(|m| minimal_token_cost(m)).sum();
+    let snd: u64 = machines.iter().filter_map(minimal_token_cost).sum();
     println!("Day 13, part 2: {snd}");
 }

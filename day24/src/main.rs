@@ -1,8 +1,8 @@
 use std::{collections::HashMap, fs};
 type Wire = (u8, u8, u8);
-const OUTPUT_WIRE: u8 = 'z' as u8;
-const X_INPUT_WIRE: u8 = 'x' as u8;
-const Y_INPUT_WIRE: u8 = 'y' as u8;
+const OUTPUT_WIRE: u8 = b'z';
+const X_INPUT_WIRE: u8 = b'x';
+const Y_INPUT_WIRE: u8 = b'y';
 const INPUT_N_BITS: usize = 45;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -114,11 +114,11 @@ impl GateSystem {
                     continue;
                 }
                 let lhs = self.wires.get(&c.l);
-                if lhs == None {
+                if lhs.is_none() {
                     continue;
                 }
                 let rhs = self.wires.get(&c.r);
-                if rhs == None {
+                if rhs.is_none() {
                     continue;
                 }
                 let lhs = lhs.unwrap();
@@ -210,7 +210,7 @@ fn find_next_carry_and_swap(
     let mut swap = None;
     if let Some(car) = carry {
         let mut with_carry = find_next(graph, connections, car, next, Gate::AND);
-        if with_carry == None {
+        if with_carry.is_none() {
             connections[n_idx].o = next_carry;
             connections[nc_idx].o = next;
             swap = Some((next_carry, next));
@@ -226,13 +226,11 @@ fn find_next_carry_and_swap(
                 connections[nc_idx].o = new_next;
                 swap = Some((next_carry, new_next));
                 next_carry = new_next;
-            } else {
-                if next_with_carry == z {
-                    connections[nn].o = next_with_carry;
-                    connections[nwc].o = new_next;
-                    swap = Some((next_with_carry, new_next));
-                    next_with_carry = new_next;
-                }
+            } else if next_with_carry == z {
+                connections[nn].o = next_with_carry;
+                connections[nwc].o = new_next;
+                swap = Some((next_with_carry, new_next));
+                next_with_carry = new_next;
             }
         }
         let (nc, mut final_carry) =
@@ -249,8 +247,8 @@ fn find_next_carry_and_swap(
 }
 
 fn wire_to_shift(w: Wire) -> u8 {
-    let bot = '0' as u8;
-    let top = '9' as u8;
+    let bot = b'0';
+    let top = b'9';
     if w.1 < bot || w.1 > top || w.2 < bot || w.2 > top {
         panic!("Invalid wire shift, should have 2 ascii digits.")
     }
@@ -258,7 +256,7 @@ fn wire_to_shift(w: Wire) -> u8 {
 }
 
 fn shift_to_wire_num(shift: u8) -> (u8, u8) {
-    ('0' as u8 + shift / 10, '0' as u8 + shift % 10)
+    (b'0' + shift / 10, b'0' + shift % 10)
 }
 
 fn swaps_to_answer(swaps: &[Wire]) -> String {

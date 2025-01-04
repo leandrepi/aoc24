@@ -110,7 +110,7 @@ fn shortest_sequence(
         return res;
     }
     let mut shortest = usize::MAX;
-    for next in &next_dir(&directional, lut) {
+    for next in &next_dir(directional, lut) {
         let mut res = 0;
         for cmd in next[..(next.len() - 1)]
             .split(BUTTON_PUSH)
@@ -132,7 +132,7 @@ impl Code {
     pub fn num_part(&self) -> usize {
         self.keys
             .chars()
-            .filter(|c| c.is_digit(10))
+            .filter(|c| c.is_ascii_digit())
             .collect::<String>()
             .parse()
             .expect("Valid digits")
@@ -145,7 +145,7 @@ fn parse_input() -> Result<Vec<Code>, ()> {
     Ok(raw
         .lines()
         .map(|l| l.trim())
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
         .map(|l| Code { keys: l.to_owned() })
         .collect())
 }

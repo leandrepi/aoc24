@@ -70,7 +70,7 @@ fn parse_equations(file_path: &str) -> Result<Vec<Equation>, ()> {
         .lines()
         .enumerate()
         .map(|(i, l)| (i, l.trim()))
-        .filter(|(_, l)| l.len() > 0)
+        .filter(|(_, l)| !l.is_empty())
     {
         let splits = line
             .split(":")
@@ -92,7 +92,7 @@ fn parse_equations(file_path: &str) -> Result<Vec<Equation>, ()> {
         let rhs = splits[1]
             .split(" ")
             .map(|s| s.trim())
-            .filter(|&l| l.len() > 0)
+            .filter(|&l| !l.is_empty())
             .map(|s| s.parse())
             .collect::<Result<Vec<u64>, _>>()
             .map_err(|e| {

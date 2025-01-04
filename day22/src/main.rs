@@ -55,13 +55,12 @@ fn iter_update(secret: u64, n: usize, monkeys: &mut [u16; TOTAL_VALUES]) -> u64 
 fn parse_input() -> Result<Vec<u64>, ()> {
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
-    Ok(raw
-        .lines()
+    raw.lines()
         .map(|l| l.trim())
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
         .map(|s| s.parse())
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| eprintln!("Failed to parse row as int: {e}"))?)
+        .map_err(|e| eprintln!("Failed to parse row as int: {e}"))
 }
 
 fn main() {
