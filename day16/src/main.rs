@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt, fs};
+use std::{cmp::Ordering, collections::HashSet, fmt, fs};
 
 const BARRIER_CHAR: u8 = "#".as_bytes()[0];
 const START_CHAR: u8 = "S".as_bytes()[0];
@@ -35,7 +35,7 @@ where
 
 impl CharArray {
     fn from(raw: &str) -> Result<Self, ()> {
-        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0);
+        let mut lines = raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let first = lines
             .next()
             .expect("Should have at least a non-empty line.");
@@ -84,8 +84,8 @@ fn find_start(map: &CharArray) -> (usize, usize) {
     let mut start = None;
     let mut end = None;
     for (c, &x) in map.contents.iter().enumerate() {
-        if start != None && end != None {
-            return (start.unwrap(), end.unwrap());
+        if let (Some(s), Some(e)) = (start, end) {
+            return (s, e);
         }
         if x == START_CHAR {
             start = Some(c);
@@ -114,22 +114,25 @@ fn rotate_direction(direction_index: usize) -> Vec<usize> {
 }
 
 fn update_dist(dist: &mut [usize], prev: &mut [Vec<usize>], cost: usize, cur: usize, next: usize) {
-    let alt = dist[cur] + cost;
-    if alt < dist[next] {
-        dist[next] = alt;
-        prev[next] = vec![cur];
-    } else if alt == dist[next] {
-        prev[next].push(cur);
+    let alt = dist[cur].checked_add(cost).unwrap_or(usize::MAX);
+    match alt.cmp(&dist[next]) {
+        Ordering::Less => {
+            dist[next] = alt;
+            prev[next] = vec![cur];
+        }
+        Ordering::Equal => prev[next].push(cur),
+        _ => (),
     }
 }
 
 fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Vec<usize>>) {
-    let mut dist = vec![];
-    let mut prev = vec![];
+    let mut dist = Vec::with_capacity(map.contents.len() * DIRECTIONS.len());
+    let mut prev = Vec::with_capacity(map.contents.len() * DIRECTIONS.len());
     let mut q = HashSet::new();
-    for _ in 0..(map.contents.len() * DIRECTIONS.len()) {
+    for v in 0..(map.contents.len() * DIRECTIONS.len()) {
         dist.push(usize::MAX);
         prev.push(vec![]);
+        q.insert(v);
     }
     dist[start * DIRECTIONS.len()
         + DIRECTIONS
@@ -137,22 +140,18 @@ fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Vec<u
             .position(|&(dir_y, dir_x)| dir_y == 0 && dir_x == 1)
             .unwrap()] = 0;
 
-    loop {
-        let (u, _) = dist
+    while !q.is_empty() {
+        let (u, _) = q
             .iter()
-            .enumerate()
-            .filter(|(i, _)| !q.contains(i))
+            .map(|&x| (x, dist[x]))
             .min_by(|(_, x), (_, y)| x.cmp(y))
             .expect("q is not empty");
-
-        let direction = u % DIRECTIONS.len();
-        let cursor = u / DIRECTIONS.len();
-        if cursor == end {
+        q.remove(&u);
+        if u == end {
             break;
         }
-
-        q.insert(u);
-
+        let direction = u % DIRECTIONS.len();
+        let cursor = u / DIRECTIONS.len();
         let (dir_y, dir_x) = DIRECTIONS[direction];
         let ux = cursor % map.width;
         let uy = cursor / map.width;
@@ -162,14 +161,14 @@ fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Vec<u
         if map.is_valid(nx, ny) {
             let c = ny as usize * map.width + nx as usize;
             let cd = c * DIRECTIONS.len() + direction;
-            if map[c] != BARRIER_CHAR && !q.contains(&cd) {
+            if map[c] != BARRIER_CHAR && q.contains(&cd) {
                 update_dist(&mut dist, &mut prev, 1, u, cd);
             }
         }
 
         for rot_dir in rotate_direction(direction) {
             let c = cursor * DIRECTIONS.len() + rot_dir;
-            if q.contains(&c) {
+            if !q.contains(&c) {
                 continue;
             }
             update_dist(&mut dist, &mut prev, 1000, u, c);
@@ -205,7 +204,7 @@ fn display_optimal_path(map: &CharArray, prev: &[Vec<usize>], end_idx: usize) {
     let mut display_map = map.clone();
     let mut c = end_idx;
     loop {
-        if prev[c].len() == 0 {
+        if prev[c].is_empty() {
             break;
         }
         let p = prev[c][0];
@@ -226,7 +225,7 @@ fn display_optimal_path(map: &CharArray, prev: &[Vec<usize>], end_idx: usize) {
 
 fn main() {
     // The input example is so slooooooooooooooooooooooooooow
-    let raw = fs::read_to_string("example.txt")
+    let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))
         .unwrap();
     let mut map = CharArray::from(&raw).unwrap();

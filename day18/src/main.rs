@@ -40,7 +40,7 @@ fn parse_barriers() -> Result<Vec<usize>, ()> {
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))?;
     let mut res = vec![];
-    for line in raw.lines().map(|l| l.trim()).filter(|l| l.len() > 0) {
+    for line in raw.lines().map(|l| l.trim()).filter(|l| !l.is_empty()) {
         let splits = line
             .split(",")
             .map(|s| s.parse())
@@ -92,7 +92,7 @@ fn update_dist(
     cur: usize,
     next: usize,
 ) {
-    let alt = dist[cur] + cost;
+    let alt = dist[cur].checked_add(cost).unwrap_or(usize::MAX);
     if alt < dist[next] {
         dist[next] = alt;
         prev[next] = Some(cur);
@@ -100,28 +100,27 @@ fn update_dist(
 }
 
 fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Option<usize>>) {
-    let mut dist = vec![];
-    let mut prev = vec![];
+    let mut dist = Vec::with_capacity(map.contents.len());
+    let mut prev = Vec::with_capacity(map.contents.len());
     let mut q = HashSet::new();
-    for _ in 0..(map.contents.len()) {
+    for v in 0..(map.contents.len()) {
         dist.push(usize::MAX);
         prev.push(None);
+        q.insert(v);
     }
     dist[start] = 0;
 
-    while q.len() != dist.len() {
-        let (u, &d) = dist
+    while !q.is_empty() {
+        let (u, _) = q
             .iter()
-            .enumerate()
-            .filter(|(i, _)| !q.contains(i))
+            .map(|&x| (x, dist[x]))
             .min_by(|(_, x), (_, y)| x.cmp(y))
             .expect("q is not empty");
+        q.remove(&u);
 
-        if u == end || d == usize::MAX {
+        if u == end {
             break;
         }
-
-        q.insert(u);
 
         let ux = u % map.width;
         let uy = u / map.width;
@@ -132,7 +131,7 @@ fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Optio
 
             if map.is_valid(nx, ny) {
                 let c = ny as usize * map.width + nx as usize;
-                if map[c] != BARRIER_CHAR && !q.contains(&c) {
+                if map[c] != BARRIER_CHAR && q.contains(&c) {
                     update_dist(&mut dist, &mut prev, 1, u, c);
                 }
             }
@@ -163,12 +162,8 @@ fn display_optimal_path(map: &CharArray, path: &[usize], next_bar: Option<usize>
     println!("{display_map}");
 }
 
-fn first_block(
-    map: &mut CharArray,
-    barriers: &[usize],
-    path: &Vec<usize>,
-) -> Option<(usize, usize)> {
-    let mut path = path.clone();
+fn first_block(map: &mut CharArray, barriers: &[usize], path: &[usize]) -> Option<(usize, usize)> {
+    let mut path = path.to_owned();
     for &barrier in barriers {
         map[barrier] = BARRIER_CHAR;
         if !path.contains(&barrier) {
@@ -176,7 +171,7 @@ fn first_block(
         }
         let (dist, prev) = dijkstra(map, START_POS, END_POS);
         if dist[END_POS] == usize::MAX {
-            display_optimal_path(&map, &path, Some(barrier));
+            display_optimal_path(map, &path, Some(barrier));
             return Some((barrier % map.width, barrier / map.width));
         }
         path = build_optimal_path(&prev, END_POS);
