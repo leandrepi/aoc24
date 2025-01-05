@@ -1,4 +1,7 @@
-use std::{collections::HashSet, fmt, fs};
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    fmt, fs,
+};
 
 const BARRIER_CHAR: u8 = "#".as_bytes()[0];
 const DOT_CHAR: u8 = ".".as_bytes()[0];
@@ -71,6 +74,19 @@ impl CharArray {
     fn is_valid(&self, x: i32, y: i32) -> bool {
         x >= 0 && (x as usize) < self.width && y >= 0 && (y as usize) < self.height
     }
+
+    fn at(&self, y: i32, x: i32) -> Option<(usize, u8)> {
+        if !self.is_valid(x, y) {
+            None
+        } else {
+            let cursor = y as usize * self.width + x as usize;
+            Some((cursor, self[cursor]))
+        }
+    }
+
+    fn coordinates(&self, cursor: usize) -> (usize, usize) {
+        (cursor / self.width, cursor % self.width)
+    }
 }
 
 impl fmt::Display for CharArray {
@@ -85,96 +101,80 @@ impl fmt::Display for CharArray {
     }
 }
 
-fn update_dist(
-    dist: &mut [usize],
-    prev: &mut [Option<usize>],
-    cost: usize,
-    cur: usize,
-    next: usize,
-) {
-    let alt = dist[cur].checked_add(cost).unwrap_or(usize::MAX);
-    if alt < dist[next] {
-        dist[next] = alt;
-        prev[next] = Some(cur);
-    }
-}
+fn dijkstra(map: &CharArray, start: usize, end: usize) -> HashMap<usize, (usize, Option<usize>)> {
+    let mut q = BTreeSet::new();
+    let mut dist_prev = HashMap::new();
+    dist_prev.insert(start, (0, None));
+    q.insert((0_usize, start));
 
-fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Option<usize>>) {
-    let mut dist = Vec::with_capacity(map.contents.len());
-    let mut prev = Vec::with_capacity(map.contents.len());
-    let mut q = HashSet::new();
-    for v in 0..(map.contents.len()) {
-        dist.push(usize::MAX);
-        prev.push(None);
-        q.insert(v);
-    }
-    dist[start] = 0;
-
-    while !q.is_empty() {
-        let (u, _) = q
-            .iter()
-            .map(|&x| (x, dist[x]))
-            .min_by(|(_, x), (_, y)| x.cmp(y))
-            .expect("q is not empty");
-        q.remove(&u);
-
+    while let Some((d, u)) = q.pop_first() {
         if u == end {
             break;
         }
-
-        let ux = u % map.width;
-        let uy = u / map.width;
-
-        for (dir_y, dir_x) in DIRECTIONS {
-            let nx = ux as i32 + dir_x;
-            let ny = uy as i32 + dir_y;
-
-            if map.is_valid(nx, ny) {
-                let c = ny as usize * map.width + nx as usize;
-                if map[c] != BARRIER_CHAR && q.contains(&c) {
-                    update_dist(&mut dist, &mut prev, 1, u, c);
+        let (uy, ux) = map.coordinates(u);
+        for (dy, dx) in DIRECTIONS {
+            if let Some((nc, c)) = map.at(uy as i32 + dy, ux as i32 + dx) {
+                if c == BARRIER_CHAR {
+                    continue;
+                }
+                let &(dv, _) = dist_prev.get(&nc).unwrap_or(&(usize::MAX, None));
+                let new_dist = d.checked_add(1).unwrap_or(usize::MAX);
+                if new_dist < dv {
+                    dist_prev.insert(nc, (new_dist, Some(u)));
+                    if dv != usize::MAX {
+                        // v was visited, hence in Q
+                        q.remove(&(dv, nc));
+                    }
+                    q.insert((new_dist, nc));
                 }
             }
         }
     }
-    (dist, prev)
+    dist_prev
 }
 
-fn build_optimal_path(prev: &[Option<usize>], end: usize) -> Vec<usize> {
-    let mut path = vec![];
-    let mut c = end;
-    path.push(end);
-    while let Some(p) = prev[c] {
-        c = p;
-        path.push(c);
+fn build_optimal_path(
+    end_state: usize,
+    prev: &HashMap<usize, (usize, Option<usize>)>,
+) -> HashSet<usize> {
+    let mut path = HashSet::new();
+    path.insert(end_state);
+    let mut c = end_state;
+    while let Some((_, Some(p))) = prev.get(&c) {
+        path.insert(*p);
+        c = *p;
     }
     path
 }
 
-fn display_optimal_path(map: &CharArray, path: &[usize], next_bar: Option<usize>) {
+fn display_optimal_path(map: &CharArray, path: &HashSet<usize>, next_bar: Option<usize>) {
     let mut display_map = map.clone();
     for &c in path {
-        display_map[c] = "O".as_bytes()[0];
+        display_map[c] = b'O';
     }
     if let Some(c) = next_bar {
-        display_map[c] = "X".as_bytes()[0];
+        display_map[c] = b'v';
     }
     println!("{display_map}");
 }
 
-fn first_block(map: &mut CharArray, barriers: &[usize], path: &[usize]) -> Option<(usize, usize)> {
+fn first_block(
+    map: &mut CharArray,
+    barriers: &[usize],
+    path: &HashSet<usize>,
+) -> Option<(usize, usize)> {
     let mut path = path.to_owned();
     for &barrier in barriers {
         map[barrier] = BARRIER_CHAR;
         if !path.contains(&barrier) {
             continue;
         }
-        let (dist, prev) = dijkstra(map, START_POS, END_POS);
-        if dist[END_POS] == usize::MAX {
+        let dist_prev = dijkstra(map, START_POS, END_POS);
+        if !dist_prev.contains_key(&END_POS) {
             display_optimal_path(map, &path, Some(barrier));
             return Some((barrier % map.width, barrier / map.width));
         }
-        path = build_optimal_path(&prev, END_POS);
+        path = build_optimal_path(END_POS, &dist_prev);
     }
     None
 }
@@ -183,9 +183,9 @@ fn main() {
     let barriers = parse_barriers().unwrap();
     let mut map = build_map(&barriers[..PART_ONE_BARRIERS]);
 
-    let (dist, prev) = dijkstra(&map, START_POS, END_POS);
-    let fst = dist[END_POS];
-    let path = build_optimal_path(&prev, END_POS);
+    let dist_prev = dijkstra(&map, START_POS, END_POS);
+    let (fst, _) = dist_prev.get(&END_POS).unwrap();
+    let path = build_optimal_path(END_POS, &dist_prev);
     display_optimal_path(&map, &path, None);
     println!("Day 16, part 1: {fst}");
 

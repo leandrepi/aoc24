@@ -1,10 +1,14 @@
-use std::{cmp::Ordering, collections::HashSet, fmt, fs};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeSet, HashMap, HashSet},
+    fs,
+};
 
-const BARRIER_CHAR: u8 = "#".as_bytes()[0];
-const START_CHAR: u8 = "S".as_bytes()[0];
-const END_CHAR: u8 = "E".as_bytes()[0];
-// dir_y, dir_x: East West North South
-const DIRECTIONS: [(i32, i32); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+const BARRIER_CHAR: u8 = b'#';
+const START_CHAR: u8 = b'S';
+const END_CHAR: u8 = b'E';
+const ROT_COST: usize = 1000;
+const FWD_COST: usize = 1;
 
 #[derive(Debug, Clone)]
 pub struct CharArray {
@@ -66,10 +70,23 @@ impl CharArray {
     fn is_valid(&self, x: i32, y: i32) -> bool {
         x >= 0 && (x as usize) < self.width && y >= 0 && (y as usize) < self.height
     }
+
+    fn at(&self, y: i32, x: i32) -> Option<(usize, u8)> {
+        if !self.is_valid(x, y) {
+            None
+        } else {
+            let cursor = y as usize * self.width + x as usize;
+            Some((cursor, self[cursor]))
+        }
+    }
+
+    fn coordinates(&self, cursor: usize) -> (usize, usize) {
+        (cursor / self.width, cursor % self.width)
+    }
 }
 
-impl fmt::Display for CharArray {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for CharArray {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for (idx, &c) in self.contents.iter().enumerate() {
             if idx > 0 && idx % self.width == 0 {
                 writeln!(f)?;
@@ -97,151 +114,144 @@ fn find_start(map: &CharArray) -> (usize, usize) {
     unreachable!()
 }
 
-fn rotate_direction(direction_index: usize) -> Vec<usize> {
-    assert!(
-        direction_index < DIRECTIONS.len(),
-        "Can only use directions within the const array EWNS"
-    );
-    let (_, dir_x) = DIRECTIONS[direction_index];
-    let rot = if dir_x == 0 {
-        [(0, 1), (0, -1)]
-    } else {
-        [(1, 0), (-1, 0)]
-    };
-    rot.iter()
-        .map(|&c| DIRECTIONS.iter().position(|&cc| cc == c).unwrap())
-        .collect()
+#[derive(Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+struct DijkstraState {
+    node: usize,
+    dir: (i32, i32),
 }
 
-fn update_dist(dist: &mut [usize], prev: &mut [Vec<usize>], cost: usize, cur: usize, next: usize) {
-    let alt = dist[cur].checked_add(cost).unwrap_or(usize::MAX);
-    match alt.cmp(&dist[next]) {
-        Ordering::Less => {
-            dist[next] = alt;
-            prev[next] = vec![cur];
+impl DijkstraState {
+    fn new(node: usize, dir: (i32, i32)) -> Self {
+        Self { node, dir }
+    }
+
+    fn next_neighbors(&self, map: &CharArray) -> Vec<(Self, usize)> {
+        let mut neighbors = vec![];
+        let (y, x) = map.coordinates(self.node);
+        let y = y as i32;
+        let x = x as i32;
+        let (dy, dx) = self.dir;
+
+        if let Some((nc, c)) = map.at(y + dy, x + dx) {
+            if c != BARRIER_CHAR {
+                neighbors.push((
+                    Self {
+                        node: nc,
+                        dir: self.dir,
+                    },
+                    FWD_COST,
+                ));
+            }
         }
-        Ordering::Equal => prev[next].push(cur),
-        _ => (),
+        let turns = match dy {
+            0 => [(1, 0), (-1, 0)],
+            _ => [(0, 1), (0, -1)],
+        };
+        for (dy, dx) in turns {
+            neighbors.push((Self::new(self.node, (dy, dx)), ROT_COST));
+        }
+        neighbors
     }
 }
 
-fn dijkstra(map: &CharArray, start: usize, end: usize) -> (Vec<usize>, Vec<Vec<usize>>) {
-    let mut dist = Vec::with_capacity(map.contents.len() * DIRECTIONS.len());
-    let mut prev = Vec::with_capacity(map.contents.len() * DIRECTIONS.len());
-    let mut q = HashSet::new();
-    for v in 0..(map.contents.len() * DIRECTIONS.len()) {
-        dist.push(usize::MAX);
-        prev.push(vec![]);
-        q.insert(v);
-    }
-    dist[start * DIRECTIONS.len()
-        + DIRECTIONS
-            .iter()
-            .position(|&(dir_y, dir_x)| dir_y == 0 && dir_x == 1)
-            .unwrap()] = 0;
+fn dijkstra(
+    map: &CharArray,
+    start: usize,
+    end: usize,
+) -> (
+    DijkstraState,
+    HashMap<DijkstraState, (usize, Vec<DijkstraState>)>,
+) {
+    let mut q = BTreeSet::new();
+    let mut dist_prev = HashMap::new();
+    let node = DijkstraState::new(start, (0, 1));
+    dist_prev.insert(node, (0, vec![]));
+    q.insert((0, node));
 
-    while !q.is_empty() {
-        let (u, _) = q
-            .iter()
-            .map(|&x| (x, dist[x]))
-            .min_by(|(_, x), (_, y)| x.cmp(y))
-            .expect("q is not empty");
-        q.remove(&u);
-        if u == end {
+    let mut end_state = None;
+    while let Some((d, u)) = q.pop_first() {
+        if u.node == end {
+            end_state = Some(u);
             break;
         }
-        let direction = u % DIRECTIONS.len();
-        let cursor = u / DIRECTIONS.len();
-        let (dir_y, dir_x) = DIRECTIONS[direction];
-        let ux = cursor % map.width;
-        let uy = cursor / map.width;
-
-        let nx = ux as i32 + dir_x;
-        let ny = uy as i32 + dir_y;
-        if map.is_valid(nx, ny) {
-            let c = ny as usize * map.width + nx as usize;
-            let cd = c * DIRECTIONS.len() + direction;
-            if map[c] != BARRIER_CHAR && q.contains(&cd) {
-                update_dist(&mut dist, &mut prev, 1, u, cd);
+        for (neighbor, cost) in u.next_neighbors(map) {
+            let &(dv, _) = dist_prev.get(&neighbor).unwrap_or(&(usize::MAX, vec![]));
+            let new_dist = cost.checked_add(d).unwrap_or(usize::MAX);
+            match new_dist.cmp(&dv) {
+                Ordering::Less => {
+                    dist_prev.insert(neighbor, (new_dist, vec![u]));
+                    if dv != usize::MAX {
+                        // v was visited, hence in Q
+                        q.remove(&(dv, neighbor));
+                    }
+                    q.insert((new_dist, neighbor));
+                }
+                Ordering::Equal => {
+                    dist_prev.entry(neighbor).and_modify(|(_, v)| v.push(u));
+                }
+                _ => (),
             }
-        }
-
-        for rot_dir in rotate_direction(direction) {
-            let c = cursor * DIRECTIONS.len() + rot_dir;
-            if !q.contains(&c) {
-                continue;
-            }
-            update_dist(&mut dist, &mut prev, 1000, u, c);
         }
     }
-    (dist, prev)
+    (end_state.unwrap(), dist_prev)
 }
 
-fn visit_optimal(prev: &[Vec<usize>], cur: usize, marked: &mut HashSet<usize>) {
-    marked.insert(cur / DIRECTIONS.len());
-    for &p in prev[cur].iter() {
+fn build_optimal_path(
+    end_state: DijkstraState,
+    prev: &HashMap<DijkstraState, (usize, Vec<DijkstraState>)>,
+) -> Vec<(usize, (i32, i32))> {
+    let mut path = vec![];
+    let mut c = end_state;
+    while let Some(p) = prev.get(&c).unwrap().1.first() {
+        path.push((p.node, p.dir));
+        c = *p;
+    }
+    path
+}
+
+fn display_optimal_path(map: &CharArray, path: &[(usize, (i32, i32))]) {
+    let mut display_map = map.clone();
+    for &(c, (dir_y, dir_x)) in path[..path.len() - 1].iter() {
+        display_map[c] = match (dir_y, dir_x) {
+            (1, 0) => b'v',
+            (-1, 0) => b'^',
+            (0, 1) => b'>',
+            _ => b'<',
+        };
+    }
+    println!("{display_map}");
+}
+
+fn visit_optimal(
+    prev: &HashMap<DijkstraState, (usize, Vec<DijkstraState>)>,
+    cur: DijkstraState,
+    marked: &mut HashSet<usize>,
+) {
+    marked.insert(cur.node);
+    for &p in prev.get(&cur).unwrap().1.iter() {
         visit_optimal(prev, p, marked);
     }
 }
 
-fn min_cost_end_state(dist: &[usize], end: usize) -> (usize, usize) {
-    let end_start = end * DIRECTIONS.len();
-    let mut fst = usize::MAX;
-    let mut end_idx = end_start;
-    for (i, &c) in dist[end_start..end_start + DIRECTIONS.len()]
-        .iter()
-        .enumerate()
-    {
-        if c < fst {
-            fst = c;
-            end_idx = end_start + i;
-        }
-    }
-    (fst, end_idx)
-}
-
-fn display_optimal_path(map: &CharArray, prev: &[Vec<usize>], end_idx: usize) {
-    let mut display_map = map.clone();
-    let mut c = end_idx;
-    loop {
-        if prev[c].is_empty() {
-            break;
-        }
-        let p = prev[c][0];
-        display_map[c / DIRECTIONS.len()] = match DIRECTIONS[c % DIRECTIONS.len()] {
-            (0, 1) => ">",
-            (0, -1) => "<",
-            (1, 0) => "v",
-            (-1, 0) => "^",
-            _ => unreachable!(),
-        }
-        .as_bytes()[0];
-        c = p;
-    }
-    display_map[end_idx / DIRECTIONS.len()] = "E".as_bytes()[0];
-    display_map[c / DIRECTIONS.len()] = "S".as_bytes()[0];
-    println!("{display_map}");
-}
-
 fn main() {
-    // The input example is so slooooooooooooooooooooooooooow
     let raw = fs::read_to_string("input.txt")
         .map_err(|e| eprintln!("ERROR: Failed to read file: {e}"))
         .unwrap();
     let mut map = CharArray::from(&raw).unwrap();
 
     let (start, end) = find_start(&map);
-    let (dist, prev) = dijkstra(&map, start, end);
+    let (end_state, dist_prev) = dijkstra(&map, start, end);
 
-    let (fst, end_state) = min_cost_end_state(&dist, end);
+    let &(fst, _) = dist_prev.get(&end_state).unwrap();
     let mut marked = HashSet::new();
-    visit_optimal(&prev, end_state, &mut marked);
+    visit_optimal(&dist_prev, end_state, &mut marked);
     let snd = marked.len();
 
-    display_optimal_path(&map, &prev, end_state);
+    let path = build_optimal_path(end_state, &dist_prev);
+    display_optimal_path(&map, &path);
     println!("Day 16, part 1: {fst}");
     for &c in &marked {
-        map[c] = "o".as_bytes()[0];
+        map[c] = b'o';
     }
     println!("{map}");
     println!("Day 16, part 2: {snd}");
